@@ -7,4 +7,5 @@
 	<video />
 	<audio>Foo</audio>
 	<video>Foo</video>
+	<video><track {...props} kind="subtitles" /></video>
 </>

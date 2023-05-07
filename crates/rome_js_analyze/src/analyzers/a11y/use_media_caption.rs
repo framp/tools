@@ -14,23 +14,23 @@ declare_rule! {
     ///
     /// ### Invalid
     /// ```jsx,expect_diagnostic
-    /// 	<video />
+    /// <video />
     /// ```
     ///
     /// ```jsx,expect_diagnostic
-    /// 	<audio>child</audio>
+    /// <audio>child</audio>
     /// ```
     ///
     /// ### Valid
     ///
     /// ```jsx
-    /// 	<audio>
-    /// 		<track kind="captions" {...props} />
-    /// 	</audio>
+    /// <audio>
+    ///   <track kind="captions" {...props} />
+    /// </audio>
     /// ```
     ///
     /// ```jsx
-    /// 	<video muted {...props}></video>
+    /// <video muted {...props}></video>
     /// ```
     pub(crate) UseMediaCaption {
         version: "12.0.0",
@@ -48,26 +48,18 @@ impl Rule for UseMediaCaption {
     fn run(ctx: &RuleContext<Self>) -> Self::Signals {
         let node = ctx.query();
 
-        let has_audio_or_video =
-            matches!(node.name_value_token()?.text_trimmed(), "video" | "audio");
-        let has_muted = node.find_attribute_by_name("muted").is_some();
-        let has_spread_prop = node
-            .attributes()
-            .into_iter()
-            .any(|attr| attr.as_jsx_spread_attribute().is_some());
+        if matches!(node.name_value_token()?.text_trimmed(), "video" | "audio") {
+            if node.has_truthy_attribute("muted") || node.has_spread_prop() {
+                return None;
+            }
 
-        if !has_audio_or_video || has_muted || has_spread_prop {
-            return None;
-        }
-
-        match node {
-            AnyJsxElement::JsxOpeningElement(_) => {
-                let jsx_element = node.parent::<JsxElement>()?;
-                let has_track = jsx_element
-                    .children()
-                    .into_iter()
-                    .filter_map(|child| {
-                        let any_jsx = match child {
+            match node {
+                AnyJsxElement::JsxOpeningElement(_) => {
+                    let jsx_element = node.parent::<JsxElement>()?;
+                    let has_track = jsx_element
+                        .children()
+                        .into_iter()
+                        .filter_map(|child| match child {
                             AnyJsxChild::JsxElement(element) => {
                                 Some(AnyJsxElement::from(element.opening_element().ok()?))
                             }
@@ -75,29 +67,15 @@ impl Rule for UseMediaCaption {
                                 Some(AnyJsxElement::from(element))
                             }
                             _ => None,
-                        }?;
+                        })
+                        .any(|element| has_valid_track_element(&element).unwrap_or(false));
 
-                        let has_track = any_jsx.name_value_token()?.text_trimmed() == "track";
-                        let has_valid_kind = &any_jsx
-                            .find_attribute_by_name("kind")?
-                            .initializer()?
-                            .value()
-                            .ok()?
-                            .as_jsx_string()?
-                            .inner_string_text()
-                            .ok()?
-                            .to_lowercase()
-                            == "captions";
-
-                        Some(has_track && has_valid_kind)
-                    })
-                    .any(|is_valid| is_valid);
-
-                if !has_track {
-                    return Some(jsx_element.range());
+                    if !has_track {
+                        return Some(jsx_element.range());
+                    }
                 }
+                _ => return Some(node.range()),
             }
-            _ => return Some(node.range()),
         }
 
         None
@@ -112,5 +90,18 @@ impl Rule for UseMediaCaption {
         .note("Captions support users with hearing-impairments. They should be a transcription or translation of the dialogue, sound effects, musical cues, and other relevant audio information.");
 
         Some(diagnostic)
+    }
+}
+
+fn has_valid_track_element(element: &AnyJsxElement) -> Option<bool> {
+    let is_track_element = element.name_value_token()?.text_trimmed() == "track";
+    if let Some(kind_attribute) = element.find_attribute_by_name("kind") {
+        let static_value = kind_attribute.as_static_value()?;
+
+        let has_valid_kind = static_value.as_string_constant()?.to_lowercase() == "captions"
+            || element.has_trailing_spread_prop(kind_attribute);
+        Some(is_track_element && has_valid_kind)
+    } else {
+        Some(element.has_spread_prop())
     }
 }

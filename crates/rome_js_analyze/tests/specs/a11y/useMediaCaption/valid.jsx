@@ -12,4 +12,8 @@
 	<video muted></video>
 	<audio {...props} />
 	<video {...props} />
+	<audio muted={false}><track kind="captions" /></audio>
+	<video><track {...props} /></video>
+	<video><track kind="captions" {...props} /></video>
+	<video><track {...props} kind="captions" /></video>
 </>

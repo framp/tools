@@ -1,6 +1,5 @@
 ---
 source: crates/rome_js_analyze/tests/spec_tests.rs
-assertion_line: 92
 expression: valid.jsx
 ---
 # Input
@@ -19,6 +18,10 @@ expression: valid.jsx
 	<video muted></video>
 	<audio {...props} />
 	<video {...props} />
+	<audio muted={false}><track kind="captions" /></audio>
+	<video><track {...props} /></video>
+	<video><track kind="captions" {...props} /></video>
+	<video><track {...props} kind="captions" /></video>
 </>
 
 ```
