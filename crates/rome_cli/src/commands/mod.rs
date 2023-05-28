@@ -14,6 +14,7 @@ pub(crate) mod ci;
 pub(crate) mod daemon;
 pub(crate) mod format;
 pub(crate) mod init;
+pub(crate) mod lint;
 pub(crate) mod migrate;
 pub(crate) mod rage;
 pub(crate) mod version;
@@ -126,6 +127,26 @@ pub enum RomeCommand {
         #[bpaf(positional("PATH"), many)]
         paths: Vec<OsString>,
     },
+    /// Run various lints on a set of files.
+    #[bpaf(command)]
+    Lint {
+        /// Apply safe fixes
+        #[bpaf(long("apply"), switch)]
+        apply: bool,
+        /// Apply safe fixes and unsafe fixes
+        #[bpaf(long("apply-unsafe"), switch)]
+        apply_unsafe: bool,
+        #[bpaf(external, hide_usage, optional)]
+        configuration: Option<Configuration>,
+        #[bpaf(external, hide_usage)]
+        cli_options: CliOptions,
+        /// A file name with its extension to pass when reading from standard in, e.g. echo 'let a;' | rome lint --stdin-file-path=file.js"
+        #[bpaf(long("stdin-file-path"), argument("PATH"), hide_usage)]
+        stdin_file_path: Option<String>,
+        /// Single file, single path or list of paths
+        #[bpaf(positional("PATH"), many)]
+        paths: Vec<OsString>,
+    },
 
     /// Bootstraps a new rome project. Creates a configuration file with some defaults.
     #[bpaf(command)]
@@ -161,6 +182,7 @@ impl RomeCommand {
             RomeCommand::Check { cli_options, .. } => cli_options.colors.as_ref(),
             RomeCommand::Ci { cli_options, .. } => cli_options.colors.as_ref(),
             RomeCommand::Format { cli_options, .. } => cli_options.colors.as_ref(),
+            RomeCommand::Lint { cli_options, .. } => cli_options.colors.as_ref(),
             RomeCommand::Init => None,
             RomeCommand::LspProxy(cli_options) => cli_options.colors.as_ref(),
             RomeCommand::Migrate(cli_options, _) => cli_options.colors.as_ref(),
@@ -178,6 +200,7 @@ impl RomeCommand {
             RomeCommand::Check { cli_options, .. } => cli_options.use_server,
             RomeCommand::Ci { cli_options, .. } => cli_options.use_server,
             RomeCommand::Format { cli_options, .. } => cli_options.use_server,
+            RomeCommand::Lint { cli_options, .. } => cli_options.use_server,
             RomeCommand::Init => false,
             RomeCommand::LspProxy(cli_options) => cli_options.use_server,
             RomeCommand::Migrate(cli_options, _) => cli_options.use_server,

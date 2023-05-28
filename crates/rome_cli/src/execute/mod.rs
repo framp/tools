@@ -61,6 +61,18 @@ pub(crate) enum TraversalMode {
         /// 2. The content of the file
         stdin: Option<(PathBuf, String)>,
     },
+    /// This mode is enabled when running the command `rome lint`
+    Lint {
+        /// The type of fixes that should be applied when analyzing a file.
+        ///
+        /// It's [None] if the `lint` command is called without `--apply` or `--apply-suggested`
+        /// arguments.
+        fix_file_mode: Option<FixFileMode>,
+        /// An optional tuple.
+        /// 1. The virtual path to the file
+        /// 2. The content of the file
+        stdin: Option<(PathBuf, String)>,
+    },
     /// This mode is enabled when running the command `rome migrate`
     Migrate {
         write: bool,
@@ -156,6 +168,7 @@ impl Execution {
             TraversalMode::Check { fix_file_mode, .. } => fix_file_mode.is_some(),
             TraversalMode::CI => false,
             TraversalMode::Format { write, .. } => write,
+            TraversalMode::Lint { fix_file_mode, .. } => fix_file_mode.is_some(),
             TraversalMode::Migrate { write: dry_run, .. } => dry_run,
         }
     }
@@ -164,6 +177,7 @@ impl Execution {
         match &self.traversal_mode {
             TraversalMode::Format { stdin, .. } => stdin.as_ref(),
             TraversalMode::Check { stdin, .. } => stdin.as_ref(),
+            TraversalMode::Lint { stdin, .. } => stdin.as_ref(),
             _ => None,
         }
     }
@@ -174,6 +188,7 @@ impl Execution {
             TraversalMode::Check { .. } => "check",
             TraversalMode::CI { .. } => "ci",
             TraversalMode::Format { .. } => "format",
+            TraversalMode::Lint { .. } => "lint",
             TraversalMode::Migrate { .. } => "migrate",
         }
     }
@@ -200,7 +215,7 @@ pub(crate) fn execute_mode(
         // The command `rome check` gives a default value of 20.
         // In case of other commands that pass here, we limit to 50 to avoid to delay the terminal.
         match &mode.traversal_mode {
-            TraversalMode::Check { .. } => 20,
+            TraversalMode::Check { .. } | TraversalMode::Lint { .. } => 20,
             TraversalMode::CI | TraversalMode::Format { .. } | TraversalMode::Migrate { .. } => 50,
         }
     };
